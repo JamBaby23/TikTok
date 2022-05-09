@@ -1,0 +1,71 @@
+wget https://github.com/JamBaby23/TikTok/raw/main/audd_music.csv
+wget https://github.com/JamBaby23/TikTok/raw/main/audd_music_apple_music.csv
+wget https://github.com/JamBaby23/TikTok/raw/main/audd_music_spotify_music.csv
+wget https://github.com/JamBaby23/TikTok/raw/main/audd_music_spotify_music_artists.csv
+ls
+tail -3 audd_music.csv
+tail -3 audd_music_apple_music.csv
+tail -3 audd_music_spotify_music.csv
+tail -3 audd_music_spotify_music_artists.csv
+hdfs dfs -ls
+hdfs dfs -mkdir tiktokmusic
+hdfs dfs -mkdir tiktokmusic/tiktok
+hdfs dfs -mkdir tiktokmusic/applemusic
+hdfs dfs -mkdir tiktokmusic/spotifymusic
+hdfs dfs -mkdir tiktokmusic/spotifyartist
+hdfs dfs -ls tiktokmusic
+hdfs dfs -put audd_music.csv tiktokmusic/tiktok
+hdfs dfs -put audd_music_apple_music.csv tiktokmusic/applemusic
+hdfs dfs -put audd_music_spotify_music.csv tiktokmusic/spotifymusic
+hdfs dfs -put audd_music_spotify_music_artists.csv tiktokmusic/spotifyartist
+hdfs dfs -ls tiktokmusic/tiktok
+hdfs dfs -ls tiktokmusic/applemusic
+hdfs dfs -ls tiktokmusic/spotifymusic
+hdfs dfs -ls tiktokmusic/spotifyartist
+
+beeline
+use username
+CREATE EXTERNAL TABLE IF NOT EXISTS tiktokmusic 
+(id bigint, artist string, title string, album string, release_date date, label string, timecode string, song_link string, apple_music_isrc string, spotify_id string) 
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," LOCATION "/user/jloisea/tiktokmusic/tiktok" TBLPROPERTIES ('skip.header.line.count' = '1');
+
+CREATE TABLE IF NOT EXISTS applemusic 
+(isrc string, artistName string, url string, discNumber float, genreNames string, durationInMillis double, releaseDate date, name string, albumName string, trackNumber float, composerName string, artwork_width double, artwork_height double, artwork_url string, artwork_bgColor string, artwork_textColor1 string, artwork_textColor2 string, artwork_textColor3 string, artwork_textColor4 string, playParams_id double, playParams_kind string) 
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," LOCATION "/user/jloisea/tiktokmusic/applemusic" TBLPROPERTIES ('skip.header.line.count' = '1');
+
+CREATE TABLE IF NOT EXISTS spotifymusic 
+(id string, popularity double, is_playable boolean, linked_from string, available string, disc_number float, duration_ms double, explicit boolean, href string, name string, preview_url string, track_number float, uri string, album_name string, album_album_group string, album_album_type string, album_uri string, album_available_markets string, album_herf string, album_images string, album_external_urls_spotify string, album_release_date string, album_release_date_precision string, external_ids_isrc string, external_urls_spotify string, artists_ids string ) 
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," LOCATION "/user/jloisea/tiktokmusic/spotifymusic" TBLPROPERTIES ('skip.header.line.count' = '1');
+
+CREATE TABLE IF NOT EXISTS spotifyartist 
+(id string, name string, url string, href string, external_urls string) 
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," LOCATION "/user/jloisea/tiktokmusic/spotifyartist" TBLPROPERTIES ('skip.header.line.count' = '1');
+
+CREATE TABLE IF NOT EXISTS cleanspotifyartist AS SELECT id, name, url, count(name) as cnt from spotifyartist where id is not null AND id != "" AND id != "null" group by id, name, url order by cnt DESC;
+
+CREATE TABLE IF NOT EXISTS cleanspotifymusic AS SELECT id, popularity, name, album_name, count(name) as cnt from spotifymusic where id is not null AND id != "" AND id != "null" group by id, popularity, name, album_name order by cnt DESC;
+
+CREATE TABLE IF NOT EXISTS cleanapplemusic AS SELECT isrc, artistName, name, albumName, count(name) as cnt from applemusic where isrc is not null AND isrc != "" AND isrc != "null" group by isrc, artistName, name, albumName order by cnt DESC;
+
+select * from cleantiktok DESC LIMIT 5;
+
+select * from cleanapple DESC LIMIT 5;
+
+select * from cleanspotifymusic DESC LIMIT 5;
+
+select * from cleanspotifyartist DESC LIMIT 5;
+
+CREATE TABLE IF NOT EXISTS cleanspotify AS SELECT id, name, url, href FROM cleanspotifyartist LEFT JOIN cleanspotifymusic ON cleanspotifyartist.id = cleanspotifymusic.id;
+
+select * from cleanspotify DESC LIMIT 5;
+
+INSERT OVERWRITE DIRECTORY '/user/jloisea/tiktokmusic/' ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' SELECT * FROM cleantiktok DESC;
+
+hdfs dfs -cat tiktokmusic/000000_0 | tail -n 2
+
+
+hdfs dfs -get tiktokmusic/000000_0 auddmusicc.csv
+
+cat auddmusicc.csv | tail -n 2
+
+scp jwoo5@xxx.xxx.xxx.xxx:/home/jloisea/auddmusicc.csv .
