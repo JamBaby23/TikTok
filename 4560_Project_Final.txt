@@ -1,0 +1,101 @@
+wget https://github.com/JamBaby23/TikTok/raw/main/audd_music.csv
+wget https://github.com/JamBaby23/TikTok/raw/main/audd_music_apple_music.csv
+wget https://github.com/JamBaby23/TikTok/raw/main/audd_music_spotify_music.csv
+wget https://github.com/JamBaby23/TikTok/raw/main/audd_music_spotify_music_artists.csv
+ls
+tail -3 audd_music.csv
+tail -3 audd_music_apple_music.csv
+tail -3 audd_music_spotify_music.csv
+tail -3 audd_music_spotify_music_artists.csv
+hdfs dfs -ls
+hdfs dfs -mkdir tiktokmusic
+hdfs dfs -mkdir applemusic
+hdfs dfs -mkdir spotifymusic
+hdfs dfs -mkdir spotifyartist
+hdfs dfs -ls
+hdfs dfs -put audd_music.csv tiktokmusic
+hdfs dfs -put audd_music_apple_music.csv applemusic
+hdfs dfs -put audd_music_spotify_music.csv spotifymusic
+hdfs dfs -put audd_music_spotify_music_artists.csv spotifyartist
+hdfs dfs -ls tiktokmusic
+hdfs dfs -ls applemusic
+hdfs dfs -ls spotifymusic
+hdfs dfs -ls spotifyartist
+
+beeline
+use username
+CREATE EXTERNAL TABLE IF NOT EXISTS tiktokmusic 
+(id bigint, artist string, title string, album string, release_date date, label string, timecode string, song_link string, apple_music_isrc string, spotify_id string) 
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," LOCATION "/user/jloisea/tiktokmusic" TBLPROPERTIES ('skip.header.line.count' = '1');
+
+CREATE EXTERNAL TABLE IF NOT EXISTS applemusic 
+(isrc string, artistName string, url string, discNumber float, genreNames string, durationInMillis double, releaseDate date, name string, albumName string, trackNumber float, composerName string, artwork_width double, artwork_height double, artwork_url string, artwork_bgColor string, artwork_textColor1 string, artwork_textColor2 string, artwork_textColor3 string, artwork_textColor4 string, playParams_id double, playParams_kind string) 
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," LOCATION "/user/jloisea/applemusic" TBLPROPERTIES ('skip.header.line.count' = '1');
+
+CREATE EXTERNAL TABLE IF NOT EXISTS spotifymusic 
+(id string, popularity double, is_playable boolean, linked_from string, available string, disc_number float, duration_ms double, explicit boolean, href string, name string, preview_url string, track_number float, uri string, album_name string, album_album_group string, album_album_type string, album_uri string, album_available_markets string, album_herf string, album_images string, album_external_urls_spotify string, album_release_date string, album_release_date_precision string, external_ids_isrc string, external_urls_spotify string, artists_ids string ) 
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," LOCATION "/user/jloisea/spotifymusic" TBLPROPERTIES ('skip.header.line.count' = '1');
+
+CREATE EXTERNAL TABLE IF NOT EXISTS spotifyartist
+(id string, name string, url string, href string, external_urls string) 
+ROW FORMAT DELIMITED FIELDS TERMINATED BY "," LOCATION "/user/jloisea/spotifyartist" TBLPROPERTIES ('skip.header.line.count' = '1');
+
+show tables;
+
+select * from tiktokmusic desc limit 5;
+
+select * from applemusic desc limit 5;
+
+select * from spotifymusic desc limit 5;
+
+select * from spotifyartist desc limit 5;
+
+CREATE TABLE IF NOT EXISTS cleanspotifyartist AS SELECT id, name, url, count(id) as cnt from spotifyartist where id is not null AND id != "" AND id != "null" group by id, name, url order by cnt DESC;
+
+CREATE TABLE IF NOT EXISTS cleanspotifymusic AS SELECT id, popularity, duration_ms, name, album_name, count(id) as cnt from spotifymusic where id is not null AND id != "" AND id != "null" group by id, popularity, duration_ms, name, album_name order by cnt DESC;
+
+CREATE TABLE IF NOT EXISTS cleanapplemusic AS SELECT isrc, artistName, durationInMillis, releaseDate, name, albumName, count(isrc) as cnt from applemusic where isrc is not null AND isrc != "" AND isrc != "null" group by isrc, artistName, durationInMillis, releaseDate, name, albumName order by cnt DESC;
+
+select * from cleanapplemusic DESC LIMIT 5;
+
+select * from cleanspotifymusic DESC LIMIT 5;
+
+select * from cleanspotifyartist DESC LIMIT 5;
+
+INSERT OVERWRITE DIRECTORY '/user/jloisea/data/' ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' SELECT * FROM cleanspotifymusic;
+
+INSERT OVERWRITE DIRECTORY '/user/jloisea/data1/' ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' SELECT * FROM cleanapplemusic;
+
+INSERT OVERWRITE DIRECTORY '/user/jloisea/data2/' ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' SELECT * FROM cleanspotifyartist;
+
+hdfs dfs -ls data
+
+hdfs dfs -ls data1
+
+hdfs dfs -ls data2
+
+hdfs dfs -cat data/000000_0 | tail -n 2
+
+hdfs dfs -cat data1/000000_0 | tail -n 2
+
+hdfs dfs -cat data2/000000_0 | tail -n 2
+
+hdfs dfs -get data/000000_0 spotifym.csv
+
+hdfs dfs -get data1/000000_0 apple.csv
+
+hdfs dfs -get data2/000000_0 spotifya.csv
+
+ls
+
+cat spotifym.csv | tail -n 2
+
+cat apple.csv | tail -n 2
+
+cat spotifya.csv | tail -n 2
+
+scp jloisea@129.153.108.75:/home/jloisea/spotifym.csv .
+
+scp jloisea@129.153.108.75:/home/jloisea/apple.csv .
+
+scp jloisea@129.153.108.75:/home/jloisea/spotifya.csv .
